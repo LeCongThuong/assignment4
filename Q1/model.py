@@ -364,7 +364,7 @@ class Gaussians:
         """
         ### YOUR CODE HERE ###
         # HINT: Refer to README for a relevant equation
-        power = None  # (N, H*W)
+        power = -0.5*(points_2D - means_2D).transpose(1, 2)@cov_2D_inverse@(points_2D - means_2D)# None  # (N, H*W)
 
         return power
 
