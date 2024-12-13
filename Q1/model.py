@@ -6,6 +6,7 @@ from typing import Tuple, Optional
 from pytorch3d.ops.knn import knn_points
 from pytorch3d.renderer.cameras import PerspectiveCameras
 from data_utils import load_gaussians_from_ply, colours_from_spherical_harmonics
+import pytorch3d
 
 class Gaussians:
 
@@ -238,13 +239,18 @@ class Gaussians:
         if self.is_isotropic:
 
             ### YOUR CODE HERE ###
-            cov_3D = None  # (N, 3, 3)
+            # S = scales * scales * torch.eye(3)
+            R = pytorch3d.transforms.quaternion_to_matrix(quats)
+            cov_3D =  scales*scales*R@R.tranpose(1, 2) # (N, 3, 3)
 
         # HINT: You can use a function from pytorch3d to convert quaternions to rotation matrices.
         else:
 
             ### YOUR CODE HERE ###
-            cov_3D = None  # (N, 3, 3)
+            R = pytorch3d.transforms.quaternion_to_matrix(quats)
+            S = scales * torch.eye(3)
+            RS = R@S[None, :, :]
+            cov_3D = RS@RS.T  # (N, 3, 3)
 
         return cov_3D
 
