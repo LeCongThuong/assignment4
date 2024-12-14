@@ -249,7 +249,7 @@ class Gaussians:
 
             ### YOUR CODE HERE ###
             R = pytorch3d.transforms.quaternion_to_matrix(quats)
-            S = torch.unsqueeze(scales, dim=2).repeat(1, 1, 3) * torch.eye(scales.shape[1]).unsqueeze(0)
+            S = torch.unsqueeze(scales, dim=2).repeat(1, 1, 3) * torch.eye(scales.shape[1], device='cuda').unsqueeze(0)
             RS = R@S
             # print("Shape: ", R.shape, S.shape, RS.shape)
             cov_3D = RS@RS.transpose(1, 2)  # (N, 3, 3)
@@ -319,7 +319,10 @@ class Gaussians:
         ### YOUR CODE HERE ###
         # HINT: Do note that means_2D have units of pixels. Hence, you must apply a
         # transformation that moves points in the world space to screen space.
-        means_2D = camera.transform_points_screen(means_3D)[:, :2]# None  # (N, 2)
+        projected_points = camera.transform_points_screen(means_3D)
+
+        # Extract the 2D coordinates (x, y) from the projected points.
+        means_2D = projected_points[..., :2].squeeze(0)  # (N, 2)
         return means_2D
 
     @staticmethod
@@ -409,8 +412,7 @@ class Scene:
         ### YOUR CODE HERE ###
         # HINT: You can use get the means of 3D Gaussians self.gaussians and calculate
         # the depth using the means and the camera
-        z_vals = self.gaussians.means - camera.get_camera_center() #None  # (N,)
-
+        z_vals = torch.mean((self.gaussians.means - camera.get_camera_center())**2, dim=1) #None  # (N,)
         return z_vals
 
     def get_idxs_to_filter_and_sort(self, z_vals: torch.Tensor):
@@ -430,9 +432,12 @@ class Scene:
         Please refer to the README file for more details.
         """
         ### YOUR CODE HERE ###
-        mask = z_vals > 0
-        _, idxs = torch.sort(z_vals[mask])
+        # mask = z_vals > 0
+        # _, idxs = torch.sort(z_vals[mask])
         # idxs = None  # (N,)
+        sorts, indices = torch.sort(z_vals)
+        mask = sorts > 0
+        idxs = torch.masked_select(indices, mask).to(torch.int64)
 
         return idxs
 
@@ -468,7 +473,7 @@ class Scene:
 
         ### YOUR CODE HERE ###
         # HINT: Can you find a function in this file that can help?
-        cov_2D_inverse = self.invert_cov_2D(cov_2D)# None  # (N, 2, 2) TODO: Verify shape
+        cov_2D_inverse = Gaussians.invert_cov_2D(cov_2D)# None  # (N, 2, 2) TODO: Verify shape
 
         ### YOUR CODE HERE ###
         # HINT: Can you find a function in this file that can help?
@@ -617,7 +622,7 @@ class Scene:
 
         ### YOUR CODE HERE ###
         # HINT: Can you implement an equation inspired by the equation for colour?
-        mask = depth > 10e4 # None  # (H, W, 1)
+        mask = torch.sum(torch.ones(alphas.shape).cuda() * alphas * transmittance, dim=0)
 
         final_transmittance = transmittance[-1, ..., 0].unsqueeze(0)  # (1, H, W)
         return image, depth, mask, final_transmittance
