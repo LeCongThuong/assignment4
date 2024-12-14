@@ -412,7 +412,9 @@ class Scene:
         ### YOUR CODE HERE ###
         # HINT: You can use get the means of 3D Gaussians self.gaussians and calculate
         # the depth using the means and the camera
-        z_vals = torch.mean((self.gaussians.means - camera.get_camera_center())**2, dim=1) #None  # (N,)
+        means_3D = self.gaussians.means
+        cam_means_3D = camera.get_world_to_view_transform().transform_points(means_3D)
+        z_vals = cam_means_3D[:, -1]
         return z_vals
 
     def get_idxs_to_filter_and_sort(self, z_vals: torch.Tensor):
@@ -536,7 +538,7 @@ class Scene:
 
         ### YOUR CODE HERE ###
         # HINT: Refer to README for a relevant equation.
-        transmittance = torch.cumsum(one_minus_alphas, dim=0)[1:, :, :]  # (N, H, W)
+        transmittance = torch.cumprod(one_minus_alphas, dim=0)[1:, :, :]  # (N, H, W)
 
         # Post processing for numerical stability
         transmittance = torch.where(transmittance < 1e-4, 0.0, transmittance)  # (N, H, W)
