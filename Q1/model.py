@@ -367,8 +367,9 @@ class Gaussians:
         """
         ### YOUR CODE HERE ###
         # HINT: Refer to README for a relevant equation
-        power = (points_2D - means_2D)@cov_2D_inverse# None  # (N, H*W)
-        power = -0.5*torch.sum(power*(points_2D - means_2D), 2)
+        distance = points_2D - means_2D
+        power = distance@cov_2D_inverse# None  # (N, H*W)
+        power = -0.5*torch.sum(power*distance, 2)
 
         return power
 
